@@ -19,9 +19,9 @@ object Sandbox extends IOApp {
     //fileName = "sandbox/src/main/resources/mutual_rec_non_term_long_chain.eo"
     //fileName = "sandbox/src/main/resources/mutual_recursion_non_term_derived_again.eo"
     //fileName = "sandbox/src/main/resources/mutual_recursion_non_term_derived_again.eo"
-    //fileName = "sandbox/src/main/resources/mutual_rec_false_positive_type_check.eo"
+    fileName = "sandbox/src/main/resources/mutual_rec_false_positive_type_check.eo"
     //fileName = "sandbox/src/main/resources/mutual_rec_non_term_factory.eo"
-    fileName = "sandbox/src/main/resources/mutual_rec_non_term_2_derived_explicit_decoration.eo" // TODO: add this to presentation
+//    fileName = "sandbox/src/main/resources/mutual_rec_non_term_2_derived_explicit_decoration.eo" // TODO: add this to presentation
     fileSourceResource = Resource.make(IO(Source.fromFile(fileName)))(src => IO(src.close()))
     fileContents <- fileSourceResource.use(src => IO(src.getLines().toVector.mkString("\n")))
     program <- IO.fromEither(Parser(fileContents).leftMap {

@@ -16,7 +16,7 @@
     false > @
 
 [] > derived
-  base > @
+  obj > @
   [self v] > n
     self.g self v > a
     self.m self v > b
