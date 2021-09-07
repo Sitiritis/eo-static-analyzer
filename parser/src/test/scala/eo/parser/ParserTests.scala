@@ -1,160 +1,17 @@
 package eo.parser
 
 
-import com.github.tarao.nonempty.collection.NonEmpty
+//import com.github.tarao.nonempty.collection.NonEmpty
 import eo.core.ast.astparams.EOExprOnly
 import eo.core.ast._
-import higherkindness.droste.data.Fix
+//import higherkindness.droste.data.Fix
 import org.scalatest.Inspectors.forAll
 import org.scalatest.funspec.AnyFunSpec
 
 import scala.reflect.ClassTag
 import java.io.File
 
-
-object MutualRecExample {
-  val ast: EOProg[EOExprOnly] = EOProg(
-    EOMetas(
-      pack = Some("sandbox"),
-      metas = Vector(
-        EOAliasMeta("stdout", "org.eolang.io.stdout"),
-        EOAliasMeta("sprintf", "org.eolang.txt.sprintf"),
-      )
-    ),
-    Vector(
-      EOBndExpr(
-        EOAnyName(LazyName("base")),
-        Fix[EOExpr](
-          EOObj(
-            freeAttrs = Vector(),
-            varargAttr = None,
-            bndAttrs = Vector(
-              EOBndExpr(
-                EOAnyName(LazyName("x")),
-                Fix[EOExpr](EOSimpleApp("memory"))
-              ),
-              EOBndExpr(
-                EOAnyName(LazyName("f")),
-                Fix[EOExpr](
-                  EOObj(
-                    freeAttrs = Vector(LazyName("self"), LazyName("v")),
-                    varargAttr = None,
-                    bndAttrs = Vector(
-                      EOBndExpr(
-                        EODecoration(),
-                        Fix[EOExpr](
-                          EOCopy(
-                            Fix[EOExpr](EODot(Fix[EOExpr](EOSimpleApp("x")), "write")),
-                            NonEmpty[Vector[EOBnd[EOExprOnly]]](
-                              EOAnonExpr(Fix[EOExpr](EOSimpleApp("v")))
-                            )
-                          )
-                        )
-                      )
-                    )
-                  )
-                )
-              ),
-              EOBndExpr(
-                EOAnyName(LazyName("g")),
-                Fix[EOExpr](
-                  EOObj(
-                    freeAttrs = Vector(LazyName("self"), LazyName("v")),
-                    varargAttr = None,
-                    bndAttrs = Vector(
-                      EOBndExpr(
-                        EODecoration(),
-                        Fix[EOExpr](
-                          EOCopy(
-                            Fix[EOExpr](EODot(Fix[EOExpr](EOSimpleApp("self")), "f")),
-                            NonEmpty[Vector[EOBnd[EOExprOnly]]](
-                              EOAnonExpr(Fix[EOExpr](EOSimpleApp("self"))),
-                              EOAnonExpr(Fix[EOExpr](EOSimpleApp("v")))
-                            )
-                          )
-                        )
-                      )
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      ),
-
-
-      EOBndExpr(
-        EOAnyName(LazyName("derived")),
-        Fix[EOExpr](
-          EOObj(
-            freeAttrs = Vector(),
-            varargAttr = None,
-            bndAttrs = Vector(
-              EOBndExpr(EODecoration(), Fix[EOExpr](EOSimpleApp("base"))),
-              EOBndExpr(
-                EOAnyName(LazyName("f")),
-                Fix[EOExpr](
-                  EOObj(
-                    freeAttrs = Vector(LazyName("self"), LazyName("v")),
-                    varargAttr = None,
-                    bndAttrs = Vector(
-                      EOBndExpr(
-                        EODecoration(),
-                        Fix[EOExpr](
-                          EOCopy(
-                            Fix[EOExpr](EODot(Fix[EOExpr](EOSimpleApp("self")), "g")),
-                            NonEmpty[Vector[EOBnd[EOExprOnly]]](
-                              EOAnonExpr(Fix[EOExpr](EOSimpleApp("self"))),
-                              EOAnonExpr(Fix[EOExpr](EOSimpleApp("v")))
-                            )
-                          )
-                        )
-                      )
-                    ),
-                  )
-                )
-              )
-            )
-          )
-        )
-      ),
-    )
-  )
-  val code: String =
-    """+package sandbox
-      |+alias stdout org.eolang.io.stdout
-      |+alias sprintf org.eolang.txt.sprintf
-      |[] > base
-      |  memory > x
-      |  [self v] > f
-      |    x.write > @
-      |      v
-      |  [self v] > g
-      |    self.f > @
-      |      self
-      |      v
-      |[] > derived
-      |  base > @
-      |  [self v] > f
-      |    self.g > @
-      |      self
-      |      v
-      |""".stripMargin
-}
-
-object FailingCode {
-  val misplacedExclamationMark: String =
-    """
-      |this
-      |  is > wrooooong!!!!!!
-      |""".stripMargin
-
-  val invalidTokens: String =
-    """
-      |&~
-      |""".stripMargin
-}
+import eo.parser.ASTs._
 
 class ParserTests extends AnyFunSpec {
 
@@ -191,84 +48,24 @@ class ParserTests extends AnyFunSpec {
 
       it("single line application examples") {
         assertCodeProducesAST(
-          code =
-            """
-              |a
-              |""".stripMargin,
-
-          ast = Vector(
-            EOAnonExpr(Fix[EOExpr](EOSimpleApp("a")))
-          )
+          code = SingleLine1.code,
+          ast = SingleLine1.ast
         )
         assertCodeProducesAST(
-          code =
-            """
-              |a > namedA
-              |""".stripMargin,
-          ast = Vector(
-            EOBndExpr(
-              EOAnyName(LazyName("namedA")),
-              Fix[EOExpr](EOSimpleApp("a"))
-            )
-          )
+          code = SingleLine2.code,
+          ast = SingleLine2.ast
         )
         assertCodeProducesAST(
-          code =
-            """
-              |a b c d > aAppliedToBCandD
-              |""".stripMargin,
-          Vector(
-            EOBndExpr(
-              EOAnyName(LazyName("aAppliedToBCandD")),
-              Fix[EOExpr](EOCopy(
-                Fix[EOExpr](EOSimpleApp("a")),
-                NonEmpty[Vector[EOBnd[EOExprOnly]]](
-                  EOAnonExpr(Fix[EOExpr](EOSimpleApp("b"))),
-                  EOAnonExpr(Fix[EOExpr](EOSimpleApp("c"))),
-                  EOAnonExpr(Fix[EOExpr](EOSimpleApp("d")))
-                )
-              )
-              )
-            )
-          )
+          code = SingleLine3.code,
+          ast = SingleLine3.ast
         )
         assertCodeProducesAST(
-          code =
-            """
-              |a (b (c d)) > rightAssociative
-              |""".stripMargin,
-          ast =
-            Vector(EOBndExpr(
-              EOAnyName(LazyName("rightAssociative")),
-              Fix[EOExpr](EOCopy(
-                Fix[EOExpr](EOSimpleApp("a")),
-                NonEmpty[Vector[EOBnd[EOExprOnly]]](
-                  EOAnonExpr(Fix[EOExpr](EOCopy(Fix[EOExpr](EOSimpleApp("b")),
-                    NonEmpty[Vector[EOBnd[EOExprOnly]]](
-                      EOAnonExpr(Fix[EOExpr](EOCopy(
-                        Fix[EOExpr](EOSimpleApp("c")),
-                        NonEmpty[Vector[EOBnd[EOExprOnly]]](
-                          EOAnonExpr(Fix[EOExpr](EOSimpleApp("d")))))))))))))))
-            )
+          code = SingleLine4.code,
+          ast = SingleLine4.ast
         )
         assertCodeProducesAST(
-          code =
-            """
-              |((a b) c) d > leftAssociative
-              |""".stripMargin,
-          ast = Vector(
-            EOBndExpr(
-              EOAnyName(LazyName("leftAssociative")),
-              Fix[EOExpr](EOCopy(
-                Fix[EOExpr](EOCopy(
-                  Fix[EOExpr](EOCopy(
-                    Fix[EOExpr](EOSimpleApp("a")),
-                    NonEmpty[Vector[EOBnd[EOExprOnly]]](EOAnonExpr(Fix[EOExpr](EOSimpleApp("b")))))),
-                  NonEmpty[Vector[EOBnd[EOExprOnly]]](EOAnonExpr(Fix[EOExpr](EOSimpleApp("c")))))),
-                NonEmpty[Vector[EOBnd[EOExprOnly]]](EOAnonExpr(Fix[EOExpr](EOSimpleApp("d"))))
-              ))
-            )
-          )
+          code = SingleLine5.code,
+          ast = SingleLine5.ast
         )
       }
 
