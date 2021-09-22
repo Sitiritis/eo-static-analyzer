@@ -1,14 +1,14 @@
-package org.polystat.odin.parser
+package org.polystat.odin.parser.scala_parser_combinators
 
 import com.github.tarao.nonempty.collection.NonEmpty
-import higherkindness.droste.data.Fix
-import org.polystat.odin.core.ast
-import org.polystat.odin.core.ast.astparams.EOExprOnly
 import org.polystat.odin.core.ast._
+import org.polystat.odin.core.ast.astparams.EOExprOnly
 import errors._
+import higherkindness.droste.data.Fix
+import org.polystat.odin.parser.Utils.{createInverseDot, createNonEmpty}
 
 import scala.util.parsing.combinator.Parsers
-import scala.util.parsing.input.{ NoPosition, Position, Reader }
+import scala.util.parsing.input.{NoPosition, Position, Reader}
 
 object Parser extends Parsers {
   class WorkflowTokenReader(val tokens: Seq[Token]) extends Reader[Token] {
@@ -63,38 +63,6 @@ object Parser extends Parsers {
 
   private def meta: Parser[META] = {
     accept("meta", { case meta: META => meta })
-  }
-
-  private def createNonEmpty(
-    objs: Seq[EOBnd[EOExprOnly]]
-  ): NonEmpty[EOBnd[EOExprOnly], Vector[EOBnd[EOExprOnly]]] = {
-    NonEmpty.from(objs) match {
-      case Some(value) => value.toVector
-      case None => throw new Exception("1 or more arguments expected, got 0.")
-    }
-  }
-
-  private def extractEOExpr(bnd: EOBnd[EOExprOnly]): EOExprOnly = {
-    bnd match {
-      case EOAnonExpr(expr) => expr
-      case EOBndExpr(_, expr) => expr
-    }
-  }
-
-  private def createInverseDot(
-    id: IDENTIFIER,
-    args: Vector[EOBnd[EOExprOnly]]
-  ): EOExprOnly = {
-    if (args.tail.nonEmpty) {
-      Fix[EOExpr](
-        EOCopy(
-          Fix[EOExpr](EODot(extractEOExpr(args.head), id.name)),
-          createNonEmpty(args.tail)
-        )
-      )
-    } else {
-      Fix[EOExpr](EODot(extractEOExpr(args.head), id.name))
-    }
   }
 
   def commentsOrNewlines: Parser[List[Token]] =
@@ -198,11 +166,11 @@ object Parser extends Parsers {
     }
     val inverseDot = identifier ~ DOT ~ name ~ verticalApplicationArgs ^^ {
       case id ~ _ ~ name ~ args =>
-        ast.EOBndExpr(name, createInverseDot(id, args))
+        EOBndExpr(name, createInverseDot(id.name, args))
     }
     val withArgs = singleLineApplication ~ name ~ verticalApplicationArgs ^^ {
       case target ~ name ~ args =>
-        ast.EOBndExpr(name, Fix[EOExpr](EOCopy(target, args)))
+        EOBndExpr(name, Fix[EOExpr](EOCopy(target, args)))
     }
 
     inverseDot | withArgs | noArgs
@@ -214,7 +182,7 @@ object Parser extends Parsers {
     }
     val inverseDot = identifier ~ DOT ~ verticalApplicationArgs ^^ {
       case id ~ _ ~ args =>
-        EOAnonExpr(createInverseDot(id, args))
+        EOAnonExpr(createInverseDot(id.name, args))
     }
     val withArgs = singleLineApplication ~ verticalApplicationArgs ^^ {
       case target ~ args =>
@@ -240,7 +208,7 @@ object Parser extends Parsers {
   def namedAbsObj: Parser[EOBndExpr[EOExprOnly]] = {
     args ~ name ~ opt(boundAttrs) ^^ {
       case (params, vararg) ~ name ~ attrs =>
-        ast.EOBndExpr(
+        EOBndExpr(
           name,
           Fix[EOExpr](EOObj(params, vararg, attrs.getOrElse(Vector())))
         )
